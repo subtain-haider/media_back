@@ -5,6 +5,7 @@ const fs = require("fs-extra");
 const { success, error } = require("../utils/apiResponse");
 const mongoose = require('mongoose');
 const crypto = require("crypto");
+const mime = require('mime');
 
 // Upload file(s) with tags
 exports.uploadFiles = (req, res) => {
@@ -82,10 +83,9 @@ exports.generatePublicLink = (req, res) => {
 exports.getPublicFile = (req, res) => {
     const { token } = req.params;
 
-    // Extract the file extension from the URL (after the public token)
-    const fileExtension = token.split('.').pop();
+    const fileExtension = token.split('.').pop().toLowerCase();
 
-    File.findOne({ publicToken: token.split('.')[0] })  // Split to get the publicToken without extension
+    File.findOne({ publicToken: token.split('.')[0] })
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
 
@@ -94,7 +94,42 @@ exports.getPublicFile = (req, res) => {
             file.save();
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
-            res.sendFile(filePath);
+
+            // Get MIME type for the file
+            const mimeType = mime.getType(fileExtension) || 'application/octet-stream';
+
+            // If the file is a video, stream it
+            if (['mp4', 'webm', 'ogg'].includes(fileExtension)) {
+                res.setHeader('Content-Type', mimeType);
+                res.setHeader('Accept-Ranges', 'bytes');
+                res.setHeader('Access-Control-Allow-Origin', '*'); // Allow cross-origin video access
+
+                const stat = fs.statSync(filePath);
+                const range = req.headers.range;
+
+                if (range) {
+                    const parts = range.replace(/bytes=/, "").split("-");
+                    const start = parseInt(parts[0], 10);
+                    const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+
+                    const chunkSize = (end - start) + 1;
+                    const fileStream = fs.createReadStream(filePath, { start, end });
+
+                    res.status(206).set({
+                        "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+                        "Content-Length": chunkSize,
+                    });
+
+                    fileStream.pipe(res);
+                } else {
+                    res.setHeader('Content-Length', stat.size);
+                    fs.createReadStream(filePath).pipe(res);
+                }
+            } else {
+                // For non-video files, use sendFile (simpler)
+                res.setHeader('Content-Type', mimeType);
+                res.sendFile(filePath);
+            }
         })
         .catch((err) => {
             console.error(err);
