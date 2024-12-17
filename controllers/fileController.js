@@ -61,7 +61,7 @@ exports.generatePublicLink = (req, res) => {
             // Generate a publicToken if it doesn't exist
             if (!file.publicToken) {
                 file.publicToken = crypto.randomBytes(16).toString("hex");
-                return file.save(); // Save the file with the new publicToken
+                return file.save().then((updatedFile) => updatedFile);
             }
 
             return file;
@@ -84,10 +84,6 @@ exports.getPublicFile = (req, res) => {
     File.findOne({ publicToken: token })
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
-
-            // Increment public views
-            file.publicViews += 1;
-            file.save();
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
             res.sendFile(filePath);
