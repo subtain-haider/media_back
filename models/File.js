@@ -10,6 +10,7 @@ const fileSchema = new mongoose.Schema(
             uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
             sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
             publicViews: { type: Number, default: 0 },
+            publicToken: { type: String, default: null },
     },
     { timestamps: true }
 );

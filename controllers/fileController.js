@@ -22,7 +22,6 @@ exports.uploadFiles = (req, res) => {
         size: file.size,
         tags: tagList,
         uploadedBy: req.user.id,
-        publicToken: crypto.randomBytes(16).toString("hex"),
     }));
 
     File.insertMany(uploadedFiles)
@@ -59,12 +58,15 @@ exports.generatePublicLink = (req, res) => {
         .then((file) => {
             if (!file) return error(res, "File not found", 404);
 
-            // Check if the file has a publicToken
+            // Generate a publicToken if it doesn't exist
             if (!file.publicToken) {
-                return error(res, "No public token available for this file", 400);
+                file.publicToken = crypto.randomBytes(16).toString("hex");
+                return file.save().then((updatedFile) => updatedFile);
             }
 
-            // Create the public link
+            return file;
+        })
+        .then((file) => {
             const baseURL = `${req.protocol}://${req.get("host")}`;
             const publicLink = `${baseURL}/api/files/public/${file.publicToken}`;
             success(res, "Public link generated successfully", { publicLink });
