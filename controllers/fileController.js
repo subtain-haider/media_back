@@ -82,10 +82,9 @@ exports.generatePublicLink = (req, res) => {
 exports.getPublicFile = (req, res) => {
     const { token } = req.params;
 
-    // Extract the file extension from the URL (after the public token)
+    // Extract the file extension from the URL
     const fileExtension = token.split('.').pop().toLowerCase();
 
-    // Find the file using the publicToken (without the extension)
     File.findOne({ publicToken: token.split('.')[0] })
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
@@ -96,31 +95,21 @@ exports.getPublicFile = (req, res) => {
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
 
-            // Set content type for videos
-            let contentType = 'application/octet-stream'; // Default for unknown file types
-            if (fileExtension === 'jpg' || fileExtension === 'jpeg' || fileExtension === 'png') {
-                contentType = 'image/jpeg';
-            } else if (fileExtension === 'pdf') {
-                contentType = 'application/pdf';
-            } else if (fileExtension === 'mp4') {
-                contentType = 'video/mp4';
-            } else if (fileExtension === 'webm') {
-                contentType = 'video/webm';
-            } else if (fileExtension === 'ogg') {
-                contentType = 'video/ogg';
+            const videoExtensions = ['mp4', 'webm', 'ogg'];
+
+            if (videoExtensions.includes(fileExtension)) {
+                // Set headers specifically for video files
+                res.setHeader("Accept-Ranges", "bytes");
+                res.setHeader("Access-Control-Allow-Origin", "*");
             }
 
-            // Set the response content type
-            res.setHeader('Content-Type', contentType);
-
-            // Handle video streaming for videos (mp4, webm, ogg)
-            if (['mp4', 'webm', 'ogg'].includes(fileExtension)) {
+            // Handle video streaming
+            if (videoExtensions.includes(fileExtension)) {
                 const stat = fs.statSync(filePath);
                 const fileSize = stat.size;
                 const range = req.headers.range;
 
                 if (range) {
-                    // Parse range header
                     const parts = range.replace(/bytes=/, "").split("-");
                     const start = parseInt(parts[0], 10);
                     const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -128,20 +117,26 @@ exports.getPublicFile = (req, res) => {
                     const chunksize = (end - start) + 1;
                     const readStream = fs.createReadStream(filePath, { start, end });
 
-                    // Set headers for partial content (video streaming)
-                    res.status(206);
-                    res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
-                    res.setHeader("Accept-Ranges", "bytes");
-                    res.setHeader("Content-Length", chunksize);
+                    res.writeHead(206, {
+                        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                        "Accept-Ranges": "bytes",
+                        "Content-Length": chunksize,
+                        "Content-Type": `video/${fileExtension}`,
+                        "Access-Control-Allow-Origin": "*", // Allow video access
+                    });
+
                     readStream.pipe(res);
                 } else {
-                    // If no range header, send the entire file
-                    const readStream = fs.createReadStream(filePath);
-                    res.setHeader("Content-Length", fileSize);
-                    readStream.pipe(res);
+                    // Full video file without range
+                    res.writeHead(200, {
+                        "Content-Length": fileSize,
+                        "Content-Type": `video/${fileExtension}`,
+                        "Access-Control-Allow-Origin": "*",
+                    });
+                    fs.createReadStream(filePath).pipe(res);
                 }
             } else {
-                // For non-video files, send the entire file normally
+                // Non-video files: send the entire file
                 res.sendFile(filePath);
             }
         })
