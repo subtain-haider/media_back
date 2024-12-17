@@ -5,7 +5,11 @@ const fs = require("fs-extra");
 const { success, error } = require("../utils/apiResponse");
 const mongoose = require('mongoose');
 const crypto = require("crypto");
-const mime = require('mime');
+// Dynamically importing mime
+let mime;
+(async () => {
+    mime = await import('mime'); // Dynamically import the mime package
+})();
 
 // Upload file(s) with tags
 exports.uploadFiles = (req, res) => {
