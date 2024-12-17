@@ -58,15 +58,18 @@ exports.generatePublicLink = (req, res) => {
         .then((file) => {
             if (!file) return error(res, "File not found", 404);
 
-            // Generate a publicToken if it doesn't exist
+            // Check if the file already has a publicToken
             if (!file.publicToken) {
+                // Generate a publicToken if it doesn't exist
                 file.publicToken = crypto.randomBytes(16).toString("hex");
                 return file.save(); // Save the file with the new publicToken
             }
 
+            // If publicToken already exists, no need to generate a new one
             return file;
         })
         .then((file) => {
+            // Now that the publicToken is guaranteed to be present, create the public link
             const baseURL = `${req.protocol}://${req.get("host")}`;
             const publicLink = `${baseURL}/api/files/public/${file.publicToken}`;
             success(res, "Public link generated successfully", { publicLink });
