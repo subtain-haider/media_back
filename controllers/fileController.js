@@ -61,7 +61,7 @@ exports.generatePublicLink = (req, res) => {
             // Generate a publicToken if it doesn't exist
             if (!file.publicToken) {
                 file.publicToken = crypto.randomBytes(16).toString("hex");
-                return file.save().then((updatedFile) => updatedFile);
+                return file.save(); // Save the file with the new publicToken
             }
 
             return file;
