@@ -85,6 +85,10 @@ exports.getPublicFile = (req, res) => {
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
 
+            // Increment public views
+            file.publicViews += 1;
+            file.save();
+
             const filePath = path.join(__dirname, "../uploads", file.filename);
             res.sendFile(filePath);
         })
