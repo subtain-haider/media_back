@@ -37,7 +37,8 @@ app.use(errorHandler);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get("/api/test-video", (req, res) => {
-    const filePath = path.join(__dirname, "../uploads/1734438526087-220307751-videos_3.mp4");
+    const filePath = path.join(__dirname, "uploads", "1734438526087-220307751-videos_3.mp4");
+    console.log("Serving file:", filePath); // Debugging line
     res.sendFile(filePath);
 });
 
