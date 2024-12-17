@@ -82,10 +82,7 @@ exports.generatePublicLink = (req, res) => {
 exports.getPublicFile = (req, res) => {
     const { token } = req.params;
 
-    // Extract the file extension from the URL (after the public token)
-    const fileExtension = token.split('.').pop();
-
-    File.findOne({ publicToken: token.split('.')[0] })  // Split to get the publicToken without extension
+    File.findOne({ publicToken: token.split('.')[0] })
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
 
@@ -94,11 +91,49 @@ exports.getPublicFile = (req, res) => {
             file.save();
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
-            res.sendFile(filePath);
+
+            // Check if the file exists
+            if (!fs.existsSync(filePath)) {
+                return error(res, "File not found", 404);
+            }
+
+            const stat = fs.statSync(filePath);
+            const fileSize = stat.size;
+            const range = req.headers.range;
+
+            if (range) {
+                // Parse range header
+                const parts = range.replace(/bytes=/, "").split("-");
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+                if (start >= fileSize || end >= fileSize) {
+                    return res.status(416).send("Requested range not satisfiable");
+                }
+
+                const chunkSize = (end - start) + 1;
+                const fileStream = fs.createReadStream(filePath, { start, end });
+
+                res.writeHead(206, {
+                    "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                    "Accept-Ranges": "bytes",
+                    "Content-Length": chunkSize,
+                    "Content-Type": "video/mp4",
+                });
+
+                fileStream.pipe(res);
+            } else {
+                // Serve the full file if no range is specified
+                res.writeHead(200, {
+                    "Content-Length": fileSize,
+                    "Content-Type": "video/mp4",
+                });
+                fs.createReadStream(filePath).pipe(res);
+            }
         })
         .catch((err) => {
-            console.error(err);
-            error(res, "Error retrieving file", 500);
+            console.error("Error serving file:", err);
+            error(res, "Internal server error", 500);
         });
 };
 
