@@ -58,4 +58,15 @@ router.get(
     handleAsync(getSharedFiles) // Retrieve files shared with the user
 );
 
+app.get('/test-video', (req, res) => {
+    const filePath = path.join(__dirname, "../uploads/1734438526087-220307751-videos_3.mp4");
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send("Error serving the file");
+        }
+    });
+});
+
+
 module.exports = router;
