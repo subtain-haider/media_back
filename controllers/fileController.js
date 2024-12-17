@@ -94,7 +94,36 @@ exports.getPublicFile = (req, res) => {
             file.save();
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
-            res.sendFile(filePath);
+            const stat = fs.statSync(filePath);
+            const fileSize = stat.size;
+
+            // Check if the request includes a range header
+            const range = req.headers.range;
+            if (range) {
+                const parts = range.replace(/bytes=/, "").split("-");
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+                const chunkSize = (end - start) + 1;
+                const fileStream = fs.createReadStream(filePath, { start, end });
+
+                res.writeHead(206, {
+                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': chunkSize,
+                    'Content-Type': file.mimeType
+                });
+
+                fileStream.pipe(res);
+            } else {
+                // Serve the full file if no range header
+                res.writeHead(200, {
+                    'Content-Length': fileSize,
+                    'Content-Type': file.mimeType,
+                });
+
+                fs.createReadStream(filePath).pipe(res);
+            }
         })
         .catch((err) => {
             console.error(err);
