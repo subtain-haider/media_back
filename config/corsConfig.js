@@ -2,7 +2,7 @@ const cors = require("cors");
 
 const allowedDomains = [
     "http://localhost:3000", // Example: Local React app
-    "https://example.com",   // Example: Production frontend
+    "http://164.92.192.18",   // Example: Production frontend
 ];
 
 const corsOptions = {
