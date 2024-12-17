@@ -36,7 +36,7 @@ app.use(errorHandler);
 // Serve static files (uploaded files) from the 'uploads' directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.get("/test-video", (req, res) => {
+app.get("/api/test-video", (req, res) => {
     const filePath = path.join(__dirname, "../uploads/1734438526087-220307751-videos_3.mp4");
     res.sendFile(filePath);
 });
