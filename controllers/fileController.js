@@ -82,24 +82,21 @@ exports.generatePublicLink = (req, res) => {
 exports.getPublicFile = (req, res) => {
     const { token } = req.params;
 
-    // Extract the file extension from the URL (after the public token)
-    const fileExtension = token.split('.').pop();
-
-    File.findOne({ publicToken: token.split('.')[0] })  // Split to get the publicToken without extension
+    File.findOne({ publicToken: token.split('.')[0] })
         .then((file) => {
-            if (!file) return error(res, "Invalid or expired link", 404);
-
-            // Increment public views
-            file.publicViews += 1;
-            file.save();
+            if (!file) return res.status(404).send("Invalid or expired link");
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).send("File not found on server");
+            }
+
             const stat = fs.statSync(filePath);
             const fileSize = stat.size;
-
-            // Check if the request includes a range header
             const range = req.headers.range;
+
             if (range) {
+                // Handle range requests
                 const parts = range.replace(/bytes=/, "").split("-");
                 const start = parseInt(parts[0], 10);
                 const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -108,26 +105,25 @@ exports.getPublicFile = (req, res) => {
                 const fileStream = fs.createReadStream(filePath, { start, end });
 
                 res.writeHead(206, {
-                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                    'Accept-Ranges': 'bytes',
-                    'Content-Length': chunkSize,
-                    'Content-Type': file.mimeType
+                    "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                    "Accept-Ranges": "bytes",
+                    "Content-Length": chunkSize,
+                    "Content-Type": "video/mp4", // Explicit MIME type for MP4
                 });
 
                 fileStream.pipe(res);
             } else {
-                // Serve the full file if no range header
+                // Send the full file
                 res.writeHead(200, {
-                    'Content-Length': fileSize,
-                    'Content-Type': file.mimeType,
+                    "Content-Length": fileSize,
+                    "Content-Type": "video/mp4", // Explicit MIME type for MP4
                 });
-
                 fs.createReadStream(filePath).pipe(res);
             }
         })
         .catch((err) => {
-            console.error(err);
-            error(res, "Error retrieving file", 500);
+            console.error("Error serving file:", err);
+            res.status(500).send("Internal server error");
         });
 };
 

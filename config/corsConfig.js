@@ -6,16 +6,9 @@ const allowedDomains = [
 ];
 
 const corsOptions = {
-    origin: (origin, callback) => {
-        // Allow requests with no origin (e.g., mobile apps or Postman)
-        if (!origin || allowedDomains.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
-    credentials: true, // Allow cookies and credentials
+    origin: "*", // Allow all origins for public files
+    methods: ["GET"],
+    credentials: false, // No cookies for public file access
 };
 
 module.exports = cors(corsOptions);
