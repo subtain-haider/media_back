@@ -5,8 +5,7 @@ This project provides a secure backend for user authentication and multimedia fi
 ## Features
 - Secure user authentication with JWT.
 - Multimedia file upload with type and size restrictions.
-- File sharing between users with permission controls.
-- Pagination support for retrieving files.
+- File sharing between users.
 - Rate limiting to prevent abuse.
 
 ## Technologies Used
@@ -56,6 +55,9 @@ This project provides a secure backend for user authentication and multimedia fi
 - **DELETE** `/api/files/delete/:id`: Delete a file by ID (Authenticated).
 - **POST** `/api/files/share`: Share a file with another user (Authenticated).
 - **GET** `/api/files/shared-with-me`: Retrieve files shared with the user (Authenticated, paginated).
+- **POST** `/api/files/generate-link/:fileId`: Generate a public link for a file (Authenticated).
+- **GET** `/api/files/public/:token`: Access a file via its public link.
+
 
 ### Testing
 - **GET** `/api/test/protected`: Test a protected route (Authenticated).
