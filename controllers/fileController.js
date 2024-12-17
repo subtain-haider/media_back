@@ -85,7 +85,8 @@ exports.getPublicFile = (req, res) => {
     // Extract the file extension from the URL (after the public token)
     const fileExtension = token.split('.').pop();
 
-    File.findOne({ publicToken: token.split('.')[0] })  // Split to get the publicToken without extension
+    // Find the file using the publicToken (without the extension)
+    File.findOne({ publicToken: token.split('.')[0] })
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
 
@@ -94,7 +95,54 @@ exports.getPublicFile = (req, res) => {
             file.save();
 
             const filePath = path.join(__dirname, "../uploads", file.filename);
-            res.sendFile(filePath);
+
+            // Set the appropriate content type based on the file extension
+            let contentType = 'application/octet-stream';  // Default for unknown file types
+            if (fileExtension === 'jpg' || fileExtension === 'jpeg' || fileExtension === 'png') {
+                contentType = 'image/jpeg';
+            } else if (fileExtension === 'pdf') {
+                contentType = 'application/pdf';
+            } else if (fileExtension === 'mp4') {
+                contentType = 'video/mp4';
+            } else if (fileExtension === 'webm') {
+                contentType = 'video/webm';
+            } else if (fileExtension === 'ogg') {
+                contentType = 'video/ogg';
+            }
+
+            // Set the response content type
+            res.setHeader('Content-Type', contentType);
+
+            // Check if it's a video and stream it accordingly
+            if (fileExtension === 'mp4' || fileExtension === 'webm' || fileExtension === 'ogg') {
+                // For video files, stream the file with proper range headers
+                const stat = fs.statSync(filePath);
+                const fileSize = stat.size;
+                const range = req.headers.range;
+
+                if (range) {
+                    const parts = range.replace(/bytes=/, "").split("-");
+
+                    const start = parseInt(parts[0], 10);
+                    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+                    const chunksize = (end - start) + 1;
+                    const readStream = fs.createReadStream(filePath, { start, end });
+
+                    res.status(206);
+                    res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+                    res.setHeader("Accept-Ranges", "bytes");
+                    res.setHeader("Content-Length", chunksize);
+                    readStream.pipe(res);
+                } else {
+                    const readStream = fs.createReadStream(filePath);
+                    res.setHeader("Content-Length", fileSize);
+                    readStream.pipe(res);
+                }
+            } else {
+                // For non-video files, just send the file
+                res.sendFile(filePath);
+            }
         })
         .catch((err) => {
             console.error(err);
