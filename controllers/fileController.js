@@ -67,8 +67,9 @@ exports.generatePublicLink = (req, res) => {
             return file;
         })
         .then((file) => {
+            const fileExtension = path.extname(file.originalName); // Get file extension
             const baseURL = `${req.protocol}://${req.get("host")}`;
-            const publicLink = `${baseURL}/api/files/public/${file.publicToken}`;
+            const publicLink = `${baseURL}/api/files/public/${file.publicToken}${fileExtension}`; // Append extension to the public link
             success(res, "Public link generated successfully", { publicLink });
         })
         .catch((err) => {
@@ -89,7 +90,8 @@ exports.getPublicFile = (req, res) => {
             file.publicViews += 1;
             file.save();
 
-            const filePath = path.join(__dirname, "../uploads", file.filename);
+            // Remove file extension for fetching
+            const filePath = path.join(__dirname, "../uploads", file.filename); // No extension added here
             res.sendFile(filePath);
         })
         .catch((err) => {
