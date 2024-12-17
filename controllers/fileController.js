@@ -82,7 +82,10 @@ exports.generatePublicLink = (req, res) => {
 exports.getPublicFile = (req, res) => {
     const { token } = req.params;
 
-    File.findOne({ publicToken: token })
+    // Extract the file extension from the URL (after the public token)
+    const fileExtension = token.split('.').pop();
+
+    File.findOne({ publicToken: token.split('.')[0] })  // Split to get the publicToken without extension
         .then((file) => {
             if (!file) return error(res, "Invalid or expired link", 404);
 
@@ -90,8 +93,7 @@ exports.getPublicFile = (req, res) => {
             file.publicViews += 1;
             file.save();
 
-            // Remove file extension for fetching
-            const filePath = path.join(__dirname, "../uploads", file.filename); // No extension added here
+            const filePath = path.join(__dirname, "../uploads", file.filename);
             res.sendFile(filePath);
         })
         .catch((err) => {
